@@ -1523,6 +1523,62 @@ function check_profiles(base_dir, callback) {
       }
       request('http://get.pocketmine.net', handle_reply);
     },
+    cuberite: function(callback) {
+      var xml_parser = require('xml2js');
+
+      var CUBERITE_VERSIONS_URL = 'http://builds.cuberite.org/rssLatest';
+      var path_prefix = path.join(base_dir, mineos.DIRS['profiles']);
+
+      function handle_reply(err, response, body) {
+        var p = [];
+
+        if (!err && (response || {}).statusCode === 200)
+          xml_parser.parseString(body, function(inner_err, result) {
+            try {
+              var packs = result['feed']['entry'];
+
+              for (var index in packs) {
+                var item = new profile_template();
+                var ref_obj = packs[index];
+                var matching = ref_obj['title'][0].match(/Cuberite ([^\ ]+) ([^\ ]+) ([^\ ]+) #(\d+) \(([^\)]+)/);
+                //["Cuberite Linux raspi-armhf Testing #8 (stable)", "Linux", "raspi-armhf", "Testing", "8", "stable"]
+
+                if (matching) {
+                  item['version'] = '{0} Build #{1}'.format(matching[3], matching[4]);
+                  item['group'] = 'cuberite';
+
+                  switch (matching[3]) {
+                    case 'Master':
+                      item['type'] = 'release';
+                      break;
+                    case 'Testing':
+                      item['type'] = 'snapshot';
+                      break;
+                    default:
+                      item['type'] = 'old_version';
+                      break;
+                  }
+
+                  item['id'] = 'Cuberite_{0}_{1}_{2}'.format(matching[1], matching[2], matching[4]);
+                  item['webui_desc'] = packs[index]['title'][0];
+                  item['weight'] = 5;
+                  item['filename'] = 'Cuberite.tar.gz';
+                  item['downloaded'] = fs.existsSync(path.join(base_dir, mineos.DIRS['profiles'], item.id, item.filename));
+                  item['url'] = 'http://builds.cuberite.org/job/Cuberite%20{0}%20{1}%20{2}/lastSuccessfulBuild/artifact/Cuberite.tar.gz'.format(matching[1], matching[2], matching[3]);
+
+                  p.push(item);
+                }
+              }
+              callback(err || inner_err, p);
+            } catch (e) {
+              callback(e, p)
+            }
+          })
+        else
+          callback(null, p);
+      }
+      request({ url: CUBERITE_VERSIONS_URL, json: false }, handle_reply);
+    },
     bungeecord: function(callback) {
       var xml_parser = require('xml2js');
 
@@ -1842,6 +1898,56 @@ function download_profiles(base_dir, args, progress_update_fn, callback) {
       });
     },
     php: function(inner_callback) {
+      var tarball = require('tarball-extract')
+
+      var dest_dir = path.join(base_dir, 'profiles', args.id);
+      var dest_filepath = path.join(dest_dir, args.filename);
+
+      var url = args.url;
+
+      fs.ensureDir(dest_dir, function(err) {
+        if (err) {
+          logging.error('[WEBUI] Error attempting download:', err);
+        } else {
+          progress(request(url), {
+            throttle: 1000,
+            delay: 100
+          })
+            .on('complete', function(response) {
+              if (response.statusCode == 200) {
+                logging.log('[WEBUI] Successfully downloaded {0} to {1}'.format(url, dest_filepath));
+                args['dest_dir'] = dest_dir;
+                args['success'] = true;
+                args['help_text'] = 'Successfully downloaded {0} to {1}'.format(url, dest_filepath);
+
+                async.series([
+                  async.apply(tarball.extractTarball, dest_filepath, dest_dir)
+                ], function(err) {
+                  if (err) {
+                    args['success'] = false;
+                    args['help_text'] = 'Successfully downloaded, but failed to extract {0}'.format(dest_filepath);
+                    inner_callback(args);
+                  } else {
+                    inner_callback(args);
+                  }
+                })
+              } else {
+                logging.error('[WEBUI] Server was unable to download file:', url);
+                logging.error('[WEBUI] Remote server returned status {0} with headers:'.format(response.statusCode), response.headers);
+                args['success'] = false;
+                args['help_text'] = 'Remote server did not return {0} (status {1})'.format(args.filename, response.statusCode);
+                inner_callback(args);
+              }
+            })
+            .on('progress', function(state) {
+              args['progress'] = state;
+              progress_update_fn(args);
+            })
+            .pipe(fs.createWriteStream(dest_filepath))
+        }
+      });
+    },
+    cuberite: function(inner_callback) {
       var tarball = require('tarball-extract')
 
       var dest_dir = path.join(base_dir, 'profiles', args.id);
