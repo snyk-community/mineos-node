@@ -1303,6 +1303,9 @@ mineos.mc = function(server_name, base_dir) {
             server_files.push.apply(server_files, sf.filter(function(file) { 
               return file.substr(-5).toLowerCase() == '.phar'; 
             }))
+            server_files.push.apply(server_files, sf.filter(function(file) { 
+              return file == 'Cuberite'; 
+            }))
             cb();
           },
           async.apply(self.sc),
@@ -1321,7 +1324,8 @@ mineos.mc = function(server_name, base_dir) {
               } else {
                 server_files.push.apply(server_files, files.filter(function(file) { 
                   return ((file.substr(-4).toLowerCase() == '.jar' && server_files.indexOf(file) < 0)
-                       || (file.substr(-5).toLowerCase() == '.phar' && server_files.indexOf(file) < 0)); 
+                       || (file.substr(-5).toLowerCase() == '.phar' && server_files.indexOf(file) < 0)
+                       || (file == 'Cuberite' && server_files.indexOf(file) < 0)); 
                 }))
                 cb();
               }
