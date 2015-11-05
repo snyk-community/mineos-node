@@ -1948,12 +1948,14 @@ function download_profiles(base_dir, args, progress_update_fn, callback) {
       });
     },
     cuberite: function(inner_callback) {
-      var tarball = require('tarball-extract')
+      var tarball = require('tarball-extract');
+      var chownr = require('chownr');
 
       var dest_dir = path.join(base_dir, 'profiles', args.id);
       var dest_filepath = path.join(dest_dir, args.filename);
 
       var url = args.url;
+      var stat_info = {};
 
       fs.ensureDir(dest_dir, function(err) {
         if (err) {
@@ -1970,8 +1972,12 @@ function download_profiles(base_dir, args, progress_update_fn, callback) {
                 args['success'] = true;
                 args['help_text'] = 'Successfully downloaded {0} to {1}'.format(url, dest_filepath);
 
-                async.series([
-                  async.apply(tarball.extractTarball, dest_filepath, dest_dir)
+                async.waterfall([
+                  async.apply(tarball.extractTarball, dest_filepath, dest_dir),
+                  async.apply(fs.stat, dest_filepath),
+                  function(fs_data, cb) {
+                    chownr(dest_dir, fs_data.uid, fs_data.gid, cb)
+                  }
                 ], function(err) {
                   if (err) {
                     args['success'] = false;
