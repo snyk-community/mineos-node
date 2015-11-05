@@ -1955,7 +1955,6 @@ function download_profiles(base_dir, args, progress_update_fn, callback) {
       var dest_filepath = path.join(dest_dir, args.filename);
 
       var url = args.url;
-      var stat_info = {};
 
       fs.ensureDir(dest_dir, function(err) {
         if (err) {
@@ -1977,6 +1976,20 @@ function download_profiles(base_dir, args, progress_update_fn, callback) {
                   async.apply(fs.stat, dest_filepath),
                   function(fs_data, cb) {
                     chownr(dest_dir, fs_data.uid, fs_data.gid, cb)
+                  },
+                  function(cb) {
+                    var inside_dir = path.join(dest_dir, 'Server');
+                    fs.readdir(inside_dir, function(err, files) {
+                      if (!err)
+                        async.each(files, function(file, inner_cb) {
+                          var old_filepath = path.join(inside_dir, file);
+                          var new_filepath = path.join(dest_dir, file);
+
+                          fs.move(old_filepath, new_filepath, inner_cb);
+                        }, cb);
+                      else
+                        cb(err);
+                    })
                   }
                 ], function(err) {
                   if (err) {
