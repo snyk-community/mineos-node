@@ -277,6 +277,15 @@
                                     <!--/ END Menu -->
 
                                     <!-- START Menu -->
+                                    <li class="accordion-group" ng-show="current && servers[current].sc.java.jarfile == 'Cuberite'">
+                                        <a ng-click="change_page('console4')">
+                                            <span class="icon icone-desktop"></span>
+                                            <span class="text">Cuberite Console</span>
+                                        </a>
+                                    </li>
+                                    <!--/ END Menu -->
+
+                                    <!-- START Menu -->
                                     <li class="accordion-group" ng-show="current && servers[current].heartbeat.query.player_">
                                         <a ng-click="change_page('player_interaction')">
                                             <span class="icon icone-group"></span>
@@ -1587,6 +1596,24 @@
                     </div>
                     <!--/ END Row -->
 
+                </div>
+                <!--/ END Content -->
+
+                <!-- START Content - CONSOLE4 -->
+                <div class="container-fluid" ng-show="page == 'console4'">
+
+                    <!-- START Row -->
+                    <div class="row-fluid">
+                        <div class="body-inner">
+                            <div class="control-group">
+                                <div class="controls">
+                                    <input type="text" class="span12" ng-model="user_input" ng-enter="console_input()">
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <!--/ END Row -->
                 </div>
                 <!--/ END Content -->
 
